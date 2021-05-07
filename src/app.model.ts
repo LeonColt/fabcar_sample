@@ -32,3 +32,15 @@ export class CreateCar {
     @IsString()
     readonly owner: string;
 }
+
+export class CarTransfer {
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsString()
+    readonly number: string;
+
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsString()
+    readonly newOwner: string;
+}
