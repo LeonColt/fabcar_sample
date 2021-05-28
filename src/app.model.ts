@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsInt, IsNotEmpty, IsNumber, IsString, Min } from "class-validator";
 
 export class Username {
     @ApiProperty()
@@ -43,4 +43,30 @@ export class CarTransfer {
     @IsNotEmpty()
     @IsString()
     readonly newOwner: string;
+}
+
+export class CreateCarFinance {
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsString()
+    readonly carId: string;
+
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsInt()
+    @Min(1000000)
+    readonly payPerMonth: number;
+}
+
+export class CreateCarFinancePayment {
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsString()
+    readonly financeId: string;
+
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsInt()
+    @Min(1000000)
+    readonly payment: number;
 }

@@ -3,10 +3,296 @@ import * as FabricCAServices from 'fabric-ca-client';
 import { Gateway, Wallets, X509Identity } from 'fabric-network';
 import * as fs from 'fs';
 import * as path from 'path';
-import { CarTransfer, CreateCar } from './app.model';
+import { v4 as uuidv4 } from 'uuid';
+import { CarTransfer, CreateCar, CreateCarFinance, CreateCarFinancePayment } from './app.model';
 
 @Injectable()
 export class AppService {
+
+  async createCarFinancePayment( username: string, data: CreateCarFinancePayment ) {
+    try {
+      const paymentId = uuidv4();
+
+      // load the network configuration
+      const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
+      const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+
+      // Create a new file system based wallet for managing identities.
+      const walletPath = path.resolve(__dirname, "..", "wallet");
+      const wallet = await Wallets.newFileSystemWallet(walletPath);
+      console.log(`Wallet path: ${walletPath}`);
+
+      // Check to see if we've already enrolled the user.
+      const identity = await wallet.get(username);
+      if (!identity) {
+        throw new UnauthorizedException(`An identity for the user "${ username }" does not exist in the wallet`);
+      }
+
+      // Create a new gateway for connecting to our peer node.
+      const gateway = new Gateway();
+      await gateway.connect(ccp, { wallet, identity: username, discovery: { enabled: true, asLocalhost: true } });
+
+      // Get the network (channel) our contract is deployed to.
+      const network = await gateway.getNetwork('mychannel');
+
+      // Get the contract from the network.
+      const contract = network.getContract('fabcar');
+
+      // Submit the specified transaction.
+      // createCar transaction - requires 5 argument, ex: ('createCar', 'CAR12', 'Honda', 'Accord', 'Black', 'Tom')
+      // changeCarOwner transaction - requires 2 args , ex: ('changeCarOwner', 'CAR12', 'Dave')
+      await contract.submitTransaction('payCarFinance', data.financeId, paymentId, data.payment.toString(), username, "bank", new Date().toUTCString() );
+      console.log(`Transaction has been submitted`);
+
+      // Disconnect from the gateway.
+      await gateway.disconnect();
+
+      return this.findOnePayment( username, paymentId );
+
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createCarFinance( username: string, data: CreateCarFinance ) {
+    try {
+      const financeId = uuidv4();
+
+      // load the network configuration
+      const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
+      const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+
+      // Create a new file system based wallet for managing identities.
+      const walletPath = path.resolve(__dirname, "..", "wallet");
+      const wallet = await Wallets.newFileSystemWallet(walletPath);
+      console.log(`Wallet path: ${walletPath}`);
+
+      // Check to see if we've already enrolled the user.
+      const identity = await wallet.get(username);
+      if (!identity) {
+        throw new UnauthorizedException(`An identity for the user "${ username }" does not exist in the wallet`);
+      }
+
+      // Create a new gateway for connecting to our peer node.
+      const gateway = new Gateway();
+      await gateway.connect(ccp, { wallet, identity: username, discovery: { enabled: true, asLocalhost: true } });
+
+      // Get the network (channel) our contract is deployed to.
+      const network = await gateway.getNetwork('mychannel');
+
+      // Get the contract from the network.
+      const contract = network.getContract('fabcar');
+
+      // Submit the specified transaction.
+      // createCar transaction - requires 5 argument, ex: ('createCar', 'CAR12', 'Honda', 'Accord', 'Black', 'Tom')
+      // changeCarOwner transaction - requires 2 args , ex: ('changeCarOwner', 'CAR12', 'Dave')
+      await contract.submitTransaction('createCarFinance', financeId, data.carId, data.payPerMonth.toString(), username, "bank", new Date().toUTCString() );
+      console.log(`Transaction has been submitted`);
+
+      // Disconnect from the gateway.
+      await gateway.disconnect();
+
+      return this.findOneFinance( username, financeId );
+
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findOneFinance( username: string, financeId: string ) {
+    try {
+      // load the network configuration
+      const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
+      console.error(ccpPath);
+      const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+
+      // Create a new file system based wallet for managing identities.
+      const walletPath = path.resolve(__dirname, "..", "wallet");
+      const wallet = await Wallets.newFileSystemWallet(walletPath);
+      console.log(`Wallet path: ${walletPath}`);
+
+      // Check to see if we've already enrolled the user.
+      const identity = await wallet.get(username);
+      if (!identity) {
+        throw new UnauthorizedException(`An identity for the user "${username}" does not exist in the wallet`);
+      }
+
+      // Create a new gateway for connecting to our peer node.
+      const gateway = new Gateway();
+      await gateway.connect(ccp, { wallet, identity: username, discovery: { enabled: true, asLocalhost: true } });
+
+      // Get the network (channel) our contract is deployed to.
+      const network = await gateway.getNetwork('mychannel');
+
+      // Get the contract from the network.
+      const contract = network.getContract('fabcar');
+
+      // Evaluate the specified transaction.
+      // queryCar transaction - requires 1 argument, ex: ('queryCar', 'CAR4')
+      // queryAllCars transaction - requires no arguments, ex: ('queryAllCars')
+      const result = await contract.evaluateTransaction('queryCarFinance', financeId );
+      console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+      return JSON.parse(result.toString());
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findPayment( username: string ) {
+    try {
+      // load the network configuration
+      const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
+      console.error(ccpPath);
+      const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+
+      // Create a new file system based wallet for managing identities.
+      const walletPath = path.resolve(__dirname, "..", "wallet");
+      const wallet = await Wallets.newFileSystemWallet(walletPath);
+      console.log(`Wallet path: ${walletPath}`);
+
+      // Check to see if we've already enrolled the user.
+      const identity = await wallet.get(username);
+      if (!identity) {
+        throw new UnauthorizedException(`An identity for the user "${username}" does not exist in the wallet`);
+      }
+
+      // Create a new gateway for connecting to our peer node.
+      const gateway = new Gateway();
+      await gateway.connect(ccp, { wallet, identity: username, discovery: { enabled: true, asLocalhost: true } });
+
+      // Get the network (channel) our contract is deployed to.
+      const network = await gateway.getNetwork('mychannel');
+
+      // Get the contract from the network.
+      const contract = network.getContract('fabcar');
+
+      // Evaluate the specified transaction.
+      // queryCar transaction - requires 1 argument, ex: ('queryCar', 'CAR4')
+      // queryAllCars transaction - requires no arguments, ex: ('queryAllCars')
+      const result = await contract.evaluateTransaction('queryAllCarFinancePayment');
+      console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+      return JSON.parse(result.toString());
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findPaymentByFinance( username: string, financeId: string ) {
+    try {
+      // load the network configuration
+      const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
+      console.error(ccpPath);
+      const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+
+      // Create a new file system based wallet for managing identities.
+      const walletPath = path.resolve(__dirname, "..", "wallet");
+      const wallet = await Wallets.newFileSystemWallet(walletPath);
+      console.log(`Wallet path: ${walletPath}`);
+
+      // Check to see if we've already enrolled the user.
+      const identity = await wallet.get(username);
+      if (!identity) {
+        throw new UnauthorizedException(`An identity for the user "${username}" does not exist in the wallet`);
+      }
+
+      // Create a new gateway for connecting to our peer node.
+      const gateway = new Gateway();
+      await gateway.connect(ccp, { wallet, identity: username, discovery: { enabled: true, asLocalhost: true } });
+
+      // Get the network (channel) our contract is deployed to.
+      const network = await gateway.getNetwork('mychannel');
+
+      // Get the contract from the network.
+      const contract = network.getContract('fabcar');
+
+      // Evaluate the specified transaction.
+      // queryCar transaction - requires 1 argument, ex: ('queryCar', 'CAR4')
+      // queryAllCars transaction - requires no arguments, ex: ('queryAllCars')
+      const result = await contract.evaluateTransaction('queryAllCarFinancePaymentByFinance', financeId);
+      console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+      return JSON.parse(result.toString());
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findOnePayment( username: string, paymentId: string ) {
+    try {
+      // load the network configuration
+      const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
+      console.error(ccpPath);
+      const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+
+      // Create a new file system based wallet for managing identities.
+      const walletPath = path.resolve(__dirname, "..", "wallet");
+      const wallet = await Wallets.newFileSystemWallet(walletPath);
+      console.log(`Wallet path: ${walletPath}`);
+
+      // Check to see if we've already enrolled the user.
+      const identity = await wallet.get(username);
+      if (!identity) {
+        throw new UnauthorizedException(`An identity for the user "${username}" does not exist in the wallet`);
+      }
+
+      // Create a new gateway for connecting to our peer node.
+      const gateway = new Gateway();
+      await gateway.connect(ccp, { wallet, identity: username, discovery: { enabled: true, asLocalhost: true } });
+
+      // Get the network (channel) our contract is deployed to.
+      const network = await gateway.getNetwork('mychannel');
+
+      // Get the contract from the network.
+      const contract = network.getContract('fabcar');
+
+      // Evaluate the specified transaction.
+      // queryCar transaction - requires 1 argument, ex: ('queryCar', 'CAR4')
+      // queryAllCars transaction - requires no arguments, ex: ('queryAllCars')
+      const result = await contract.evaluateTransaction('queryCarFinancePayment', paymentId );
+      console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+      return JSON.parse(result.toString());
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findFinance( username: string ) {
+    try {
+      // load the network configuration
+      const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
+      console.error(ccpPath);
+      const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+
+      // Create a new file system based wallet for managing identities.
+      const walletPath = path.resolve(__dirname, "..", "wallet");
+      const wallet = await Wallets.newFileSystemWallet(walletPath);
+      console.log(`Wallet path: ${walletPath}`);
+
+      // Check to see if we've already enrolled the user.
+      const identity = await wallet.get(username);
+      if (!identity) {
+        throw new UnauthorizedException(`An identity for the user "${username}" does not exist in the wallet`);
+      }
+
+      // Create a new gateway for connecting to our peer node.
+      const gateway = new Gateway();
+      await gateway.connect(ccp, { wallet, identity: username, discovery: { enabled: true, asLocalhost: true } });
+
+      // Get the network (channel) our contract is deployed to.
+      const network = await gateway.getNetwork('mychannel');
+
+      // Get the contract from the network.
+      const contract = network.getContract('fabcar');
+
+      // Evaluate the specified transaction.
+      // queryCar transaction - requires 1 argument, ex: ('queryCar', 'CAR4')
+      // queryAllCars transaction - requires no arguments, ex: ('queryAllCars')
+      const result = await contract.evaluateTransaction('queryAllCarFinances');
+      console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+      return JSON.parse(result.toString());
+    } catch (error) {
+      throw error;
+    }
+  }
 
   async transfer( username: string, data: CarTransfer ) : Promise<void> {
     try {
@@ -15,7 +301,7 @@ export class AppService {
       const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
 
       // Create a new file system based wallet for managing identities.
-      const walletPath = path.join(process.cwd(), 'wallet');
+      const walletPath = path.resolve(__dirname, "..", "wallet");
       const wallet = await Wallets.newFileSystemWallet(walletPath);
       console.log(`Wallet path: ${walletPath}`);
 
@@ -56,7 +342,7 @@ export class AppService {
       const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
 
       // Create a new file system based wallet for managing identities.
-      const walletPath = path.join(process.cwd(), 'wallet');
+      const walletPath = path.resolve(__dirname, "..", "wallet");
       const wallet = await Wallets.newFileSystemWallet(walletPath);
       console.log(`Wallet path: ${walletPath}`);
 
@@ -92,7 +378,7 @@ export class AppService {
     }
   }
 
-  async find( username: string ) {
+  async findCar( username: string ) {
     try {
       // load the network configuration
       const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
@@ -100,7 +386,7 @@ export class AppService {
       const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
 
       // Create a new file system based wallet for managing identities.
-      const walletPath = path.join(process.cwd(), 'wallet');
+      const walletPath = path.resolve(__dirname, "..", "wallet");
       const wallet = await Wallets.newFileSystemWallet(walletPath);
       console.log(`Wallet path: ${walletPath}`);
 
@@ -131,7 +417,7 @@ export class AppService {
     }
   }
 
-  async findOne( username: string, carNumber: string ) {
+  async findOneCar( username: string, carNumber: string ) {
     try {
       // load the network configuration
       const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
@@ -139,7 +425,7 @@ export class AppService {
       const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
 
       // Create a new file system based wallet for managing identities.
-      const walletPath = path.join(process.cwd(), 'wallet');
+      const walletPath = path.resolve(__dirname, "..", "wallet");
       const wallet = await Wallets.newFileSystemWallet(walletPath);
       console.log(`Wallet path: ${walletPath}`);
 
@@ -182,7 +468,7 @@ export class AppService {
       const ca = new FabricCAServices(caInfo.url, { trustedRoots: caTLSCACerts, verify: false }, caInfo.caName);
 
       // Create a new file system based wallet for managing identities.
-      const walletPath = path.join(process.cwd(), 'wallet');
+      const walletPath = path.resolve(__dirname, "..", "wallet");
       const wallet = await Wallets.newFileSystemWallet(walletPath);
       console.log(`Wallet path: ${walletPath}`);
 
@@ -220,7 +506,7 @@ export class AppService {
         const ca = new FabricCAServices(caURL);
 
         // Create a new file system based wallet for managing identities.
-        const walletPath = path.join(process.cwd(), 'wallet');
+        const walletPath = path.resolve(__dirname, "..", "wallet");
         const wallet = await Wallets.newFileSystemWallet(walletPath);
         console.log(`Wallet path: ${walletPath}`);
 
