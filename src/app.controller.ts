@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
-import { ApiConflictResponse, ApiCreatedResponse, ApiForbiddenResponse, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { ApiConflictResponse, ApiCreatedResponse, ApiForbiddenResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { CarTransfer, CreateCar, CreateCarFinance, CreateCarFinancePayment, Username } from './app.model';
 import { AppService } from './app.service';
 
@@ -7,11 +7,20 @@ import { AppService } from './app.service';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @ApiOperation({ summary: "Sign In" })
+  @ApiNoContentResponse({ description: "Sign In success" })
+  @ApiNotFoundResponse({ description: "User was not found." })
+  @HttpCode( HttpStatus.NO_CONTENT )
+  @Post("signin")
+  async signIn( @Body() Username: Username ) {
+    await this.appService.signIn(Username.username);
+  }
+
   @ApiOperation({ summary: "Register Admin" })
   @ApiNoContentResponse({ description: "Register admin success" })
   @ApiConflictResponse({ description: "Admin already registered" })
   @HttpCode( HttpStatus.NO_CONTENT )
-  @Post("register/admin")
+  @Post("signup/admin")
   async registerAdmin() {
     await this.appService.registerAdmin();
   }
@@ -21,7 +30,7 @@ export class AppController {
   @ApiConflictResponse({ description: "User already registered" })
   @ApiForbiddenResponse({ description: "You must register admin first" })
   @HttpCode( HttpStatus.NO_CONTENT )
-  @Post("register")
+  @Post("signup")
   async registerUser( @Body() username: Username ) {
     await this.appService.register(username.username);
   }
