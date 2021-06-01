@@ -70,3 +70,26 @@ export class CreateCarFinancePayment {
     @Min(1000000)
     readonly payment: number;
 }
+
+export class Car {
+    @ApiProperty()
+    readonly id: string;
+
+    @ApiProperty()
+    readonly color: string;
+
+    @ApiProperty()
+    readonly make: string;
+
+    @ApiProperty()
+    readonly model: string;
+
+    @ApiProperty()
+    readonly inFinance: boolean;
+
+    @ApiProperty()
+    readonly owner: string;
+
+    @ApiProperty()
+    readonly price: number;
+}

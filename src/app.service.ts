@@ -1,10 +1,11 @@
 import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { plainToClass } from 'class-transformer';
 import * as FabricCAServices from 'fabric-ca-client';
 import { Gateway, Wallets, X509Identity } from 'fabric-network';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { CarTransfer, CreateCar, CreateCarFinance, CreateCarFinancePayment } from './app.model';
+import { Car, CarTransfer, CreateCar, CreateCarFinance, CreateCarFinancePayment } from './app.model';
 
 @Injectable()
 export class AppService {
@@ -378,7 +379,7 @@ export class AppService {
     }
   }
 
-  async findCar( username: string ) {
+  async findCar( username: string ) : Promise<Car[]> {
     try {
       // load the network configuration
       const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
@@ -409,15 +410,29 @@ export class AppService {
       // Evaluate the specified transaction.
       // queryCar transaction - requires 1 argument, ex: ('queryCar', 'CAR4')
       // queryAllCars transaction - requires no arguments, ex: ('queryAllCars')
-      const result = await contract.evaluateTransaction('queryAllCars');
-      console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
-      return JSON.parse(result.toString());
+      const rawData = await contract.evaluateTransaction('queryAllCars');
+      console.log(`Transaction has been evaluated, result is: ${rawData.toString()}`);
+      const data = JSON.parse(rawData.toString());
+      let result: Car[] = [];
+      for ( const datum of data ) {
+        const car = plainToClass( Car, {
+          id: datum.Key,
+          color: datum.Record.color,
+          inFinance: datum.Record.inFinance,
+          make: datum.Record.make,
+          model: datum.Record.model,
+          owner: datum.Record.owner,
+          price: datum.Record.price,
+        } as Car );
+        result.push( car );
+      }
+      return result;
     } catch (error) {
       throw error;
     }
   }
 
-  async findOneCar( username: string, carNumber: string ) {
+  async findOneCar( username: string, id: string ) : Promise<Car> {
     try {
       // load the network configuration
       const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network','organizations','peerOrganizations','org1.example.com', 'connection-org1.json');
@@ -448,9 +463,18 @@ export class AppService {
       // Evaluate the specified transaction.
       // queryCar transaction - requires 1 argument, ex: ('queryCar', 'CAR4')
       // queryAllCars transaction - requires no arguments, ex: ('queryAllCars')
-      const result = await contract.evaluateTransaction('queryCar', carNumber);
+      const result = await contract.evaluateTransaction('queryCar', id);
       console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
-      return JSON.parse(result.toString());
+      const data = JSON.parse( result.toString() );
+      return plainToClass( Car, {
+        id,
+        color: data.color,
+        inFinance: data.inFinance,
+        make: data.make,
+        model: data.model,
+        owner: data.owner,
+        price: data.price,
+      } as Car );
     } catch (error) {
       throw error;
     }
